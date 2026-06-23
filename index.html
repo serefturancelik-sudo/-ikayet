@@ -3,58 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Çipil - Şifre Çözücü Havuz</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <title>Çipil - Gelen Şikayetler</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #10b981; --text: #f8fafc; --border: #334155; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: var(--bg); color: var(--text); padding: 30px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 600px; background: var(--card); border: 1px solid var(--border); padding: 30px; border-radius: 12px; }
+        .container { width: 100%; max-width: 700px; }
         h2 { margin-bottom: 25px; border-left: 4px solid var(--accent); padding-left: 10px; font-size: 1.6rem; }
-        textarea, input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: white; outline: none; margin-bottom: 15px; }
-        .btn { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
-        .result { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent); padding: 15px; border-radius: 6px; margin-top: 20px; display: none; word-break: break-all; }
+        .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; font-weight: bold; }
+        .user-name { color: #f59e0b; font-size: 1.05rem; }
+        .cate { color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 2px 8px; border-radius: 4px; }
+        .stars { color: #e2e8f0; }
+        .text { line-height: 1.5; margin-bottom: 12px; font-size: 0.95rem; color: #cbd5e1; }
+        .preview { max-width: 100%; max-height: 350px; border-radius: 6px; border: 1px solid var(--border); margin-top: 10px; display: block; }
+        .loading { text-align: center; color: #94a3b8; padding: 30px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Çipil Şifre Çözücü Kontrol Paneli (Site 2)</h2>
-    <p style="color: #94a3b8; margin-bottom: 15px; font-size: 0.9rem;">Gelen şifreli mesaj kodunu aşağıdaki kutuya yapıştırıp içeriği güvenle oku:</p>
-    
-    <textarea id="encryptedInput" rows="4" placeholder="U2FsdGVkX1... ile başlayan şifreli kodu buraya yapıştırın..."></textarea>
-    <button class="btn" onclick="decryptMessage()">Şifreyi Çöz ve Oku</button>
-
-    <div id="outputBox" class="result">
-        <strong>👤 Çözülen Orijinal Mesaj:</strong>
-        <p id="decryptedText" style="margin-top: 10px; color: #e2e8f0;"></p>
-    </div>
+    <h2>Gelen Şikayet Bildirimleri (Site 2)</h2>
+    <div id="list"><div class="loading">Şikayetler yükleniyor...</div></div>
 </div>
 
 <script>
-    const SECRET_KEY = "CipilKriptoAnahtari123";
+    function fetchLiveComplaints() {
+        const listDiv = document.getElementById('list');
 
-    function decryptMessage() {
-        const encryptedData = document.getElementById('encryptedInput').value.trim();
-        const outBox = document.getElementById('outputBox');
-        const outText = document.getElementById('decryptedText');
-
-        if(!encryptedData) { alert("Lütfen şifreli kodu yapıştırın!"); return; }
-
-        try {
-            const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY);
-            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-
-            if(decrypted) {
-                outText.innerText = decrypted;
-                outBox.style.display = 'block';
-            } else {
-                alert("Hatalı kod veya geçersiz anahtar!");
+        // Ortak havuzdaki veriyi canlı olarak çekiyoruz
+        fetch('https://api.jsonbin.io/v3/b/66183e8b4347693388656b26/latest', {
+            headers: {
+                'X-Master-Key': '$2a$10$wR6mSkl/88nI04VAn/pE7OnZgQfE822.4jZ58i7E4V8N7U6I3aRmW'
             }
-        } catch (e) {
-            alert("Şifre çözülemedi. Kodun tam kopyalandığından emin olun.");
-        }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const item = data.record;
+            if (!item || !item.name) {
+                listDiv.innerHTML = '<div class="loading">Henüz gelen şikayet yok. 😎</div>';
+                return;
+            }
+
+            let starString = "★".repeat(item.rating) + "☆".repeat(5 - item.rating);
+            if(item.rating === "0") starString = "Puan Yok";
+
+            // Şifresiz direkt ekrana yansıtıyoruz
+            listDiv.innerHTML = `
+                <div class="card">
+                    <div class="header">
+                        <span class="user-name">👤 ${item.name}</span>
+                        <span class="cate">${item.category}</span>
+                        <span class="stars">${starString} (${item.time})</span>
+                    </div>
+                    <div class="text">${item.text}</div>
+                    ${item.image ? `<img src="${item.image}" class="preview">` : ''}
+                </div>
+            `;
+        })
+        .catch(() => {
+            listDiv.innerHTML = '<div class="loading">Bağlantı güncellenirken hata oluştu...</div>';
+        });
     }
+
+    // İlk açılışta yükle ve her 5 saniyede bir diğer telefonlardan veri gelmiş mi diye otomatik güncelle
+    fetchLiveComplaints();
+    setInterval(fetchLiveComplaints, 5000);
 </script>
 </body>
 </html>
