@@ -3,65 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Çipil - Canlı Şikayet Havuzu</title>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <title>Çipil - Şifre Çözücü Havuz</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #10b981; --text: #f8fafc; --border: #334155; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: var(--bg); color: var(--text); padding: 30px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 700px; }
+        .container { width: 100%; max-width: 600px; background: var(--card); border: 1px solid var(--border); padding: 30px; border-radius: 12px; }
         h2 { margin-bottom: 25px; border-left: 4px solid var(--accent); padding-left: 10px; font-size: 1.6rem; }
-        .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 10px; margin-bottom: 15px; animation: gelmeEfekti 0.5s ease; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; font-weight: bold; }
-        .user-name { color: #f59e0b; }
-        .cate { color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 2px 8px; border-radius: 4px; }
-        .text { line-height: 1.5; color: #cbd5e1; }
-        .preview { max-width: 100%; max-height: 300px; border-radius: 6px; display: block; margin-top: 10px; border: 1px solid var(--border); }
-        .status { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; text-align: center; border: 1px solid var(--border); }
-        @keyframes gelmeEfekti { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        textarea, input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: white; outline: none; margin-bottom: 15px; }
+        .btn { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+        .result { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent); padding: 15px; border-radius: 6px; margin-top: 20px; display: none; word-break: break-all; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="status" id="srvStatus">Canlı hat başlatılıyor...</div>
-    <h2>Canlı Gelen Kutusu (Site 2)</h2>
-    <div id="list"></div>
+    <h2>Çipil Şifre Çözücü Kontrol Paneli (Site 2)</h2>
+    <p style="color: #94a3b8; margin-bottom: 15px; font-size: 0.9rem;">Gelen şifreli mesaj kodunu aşağıdaki kutuya yapıştırıp içeriği güvenle oku:</p>
+    
+    <textarea id="encryptedInput" rows="4" placeholder="U2FsdGVkX1... ile başlayan şifreli kodu buraya yapıştırın..."></textarea>
+    <button class="btn" onclick="decryptMessage()">Şifreyi Çöz ve Oku</button>
+
+    <div id="outputBox" class="result">
+        <strong>👤 Çözülen Orijinal Mesaj:</strong>
+        <p id="decryptedText" style="margin-top: 10px; color: #e2e8f0;"></p>
+    </div>
 </div>
 
 <script>
-    // Kendimize özel sabit bir telsiz kanalı açıyoruz
-    const peer = new Peer('cipil-sikayet-havuzu-ozel');
-    const listDiv = document.getElementById('list');
+    const SECRET_KEY = "CipilKriptoAnahtari123";
 
-    peer.on('open', (id) => {
-        document.getElementById('srvStatus').innerText = "🟢 Canlı hat aktif. Şikayetler bekleniyor...";
-    });
+    function decryptMessage() {
+        const encryptedData = document.getElementById('encryptedInput').value.trim();
+        const outBox = document.getElementById('outputBox');
+        const outText = document.getElementById('decryptedText');
 
-    // Diğer telefondan veri geldiği an burası tetiklenir
-    peer.on('connection', (conn) => {
-        conn.on('data', (data) => {
-            
-            // Yeni gelen şikayet kartını oluştur
-            let card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="header">
-                    <span class="user-name">👤 ${data.name}</span>
-                    <span class="cate">${data.category}</span>
-                    <span>🕒 ${data.time}</span>
-                </div>
-                <div class="text">${data.text}</div>
-            `;
+        if(!encryptedData) { alert("Lütfen şifreli kodu yapıştırın!"); return; }
 
-            if (data.image) {
-                card.innerHTML += `<img src="${data.image}" class="preview">`;
+        try {
+            const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY);
+            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+
+            if(decrypted) {
+                outText.innerText = decrypted;
+                outBox.style.display = 'block';
+            } else {
+                alert("Hatalı kod veya geçersiz anahtar!");
             }
-
-            // En üste ekle
-            listDiv.insertBefore(card, listDiv.firstChild);
-        });
-    });
+        } catch (e) {
+            alert("Şifre çözülemedi. Kodun tam kopyalandığından emin olun.");
+        }
+    }
 </script>
 </body>
 </html>
